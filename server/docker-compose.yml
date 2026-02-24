@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    container_name: cloud-balance-db
+    environment:
+      POSTGRES_USER: cloudbalance
+      POSTGRES_PASSWORD: cloudbalance
+      POSTGRES_DB: cloudbalance
+    ports:
+      - "5432:5432"
+    volumes:
+      - cloud_balance_pg:/var/lib/postgresql/data
+volumes:
+  cloud_balance_pg:
