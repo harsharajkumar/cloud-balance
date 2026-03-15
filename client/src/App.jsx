@@ -8,6 +8,11 @@ import NewProject from './pages/NewProject.jsx';
 import Account from './pages/Account.jsx';
 import Settings from './pages/Settings.jsx';
 import AppShell from './ui/AppShell.jsx';
+import ProjectDetail from './pages/ProjectDetail';
+
+
+// In routes:
+
 
 function useAuth() {
   const [user, setUser] = React.useState(null);
@@ -52,6 +57,7 @@ export default function App() {
       >
         <Route index element={<DashboardHome auth={auth} />} />
         <Route path="create" element={<NewProject auth={auth} />} />
+        <Route path="/projects/:id" element={<ProjectDetail />} />
         <Route path="account" element={<Account auth={auth} />} />
         <Route path="settings" element={<Settings />} />
       </Route>

@@ -7,8 +7,6 @@ async function request(path, { method = 'GET', body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
     credentials: 'include',
   });
-
-
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = data?.error || `Request failed (${res.status})`;
@@ -18,11 +16,15 @@ async function request(path, { method = 'GET', body } = {}) {
 }
 
 export const api = {
+  // Auth
   me: () => request('/auth/me'),
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
   register: (name, email, password) => request('/auth/register', { method: 'POST', body: { name, email, password } }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   updateMe: (name) => request('/auth/me', { method: 'PATCH', body: { name } }),
+  
+  // Projects
   listProjects: () => request('/projects'),
   createProject: (payload) => request('/projects', { method: 'POST', body: payload }),
+  deleteProject: (id) => request(`/projects/${id}`, { method: 'DELETE' }),
 };
