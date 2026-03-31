@@ -1,0 +1,39 @@
+{
+  "chosen_deployment_model": "xgboost",
+  "deployment_rationale": "Linear Regression achieved the best offline RMSE during evaluation, but XGBoost was selected for deployment because its non-linear behavior is safer for autoscaling decisions under bursty traffic.",
+  "comparison_best_rmse": {
+    "Model": "Linear Regression",
+    "MAE": 11.128913677561025,
+    "RMSE": 14.738265170554298
+  },
+  "all_models": [
+    {
+      "Model": "Linear Regression",
+      "MAE": 11.128913677561025,
+      "RMSE": 14.738265170554298
+    },
+    {
+      "Model": "XGBoost",
+      "MAE": 12.008617212715611,
+      "RMSE": 16.475011082017858
+    },
+    {
+      "Model": "LSTM",
+      "MAE": 12.426912781792069,
+      "RMSE": 16.732181185992967
+    },
+    {
+      "Model": "CNN",
+      "MAE": 12.84638372633446,
+      "RMSE": 17.034164125900816
+    },
+    {
+      "Model": "SARIMAX",
+      "MAE": 46.43097518439007,
+      "RMSE": 55.2142668312559
+    }
+  ],
+  "capacity_per_replica": 500,
+  "min_replicas": 1,
+  "max_replicas": 10
+}
