@@ -172,6 +172,44 @@ A sample dataset is included. To use your own:
 2. Follow the CSV format above
 3. Restart backend server
 
+## ML Service Setup
+
+The ML inference service lives in `server/ml/app.py` and exposes:
+
+- `GET /prediction` returning JSON with `predicted_requests` and `desired_replicas`
+- `GET /metrics` returning Prometheus text format
+
+### Recommended: Run ML service with Docker
+
+This keeps the `xgboost` runtime dependencies consistent across machines.
+
+```bash
+docker build -f server/ml/Dockerfile . -t cloud-balance-ml
+docker run --rm -p 8001:8001 cloud-balance-ml
+```
+
+From the `server/` directory you can also run:
+
+```bash
+docker compose up ml
+```
+
+### Local Python Setup
+
+On macOS, `xgboost` needs OpenMP:
+
+```bash
+brew install libomp
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r server/ml/requirements.txt
+python server/ml/app.py
+```
+
+### Model Selection Note
+
+Linear Regression achieved the best offline RMSE during evaluation, but XGBoost is the deployed model because its non-linear response is safer for autoscaling decisions when traffic changes sharply.
+
 ##  Testing the Application
 
 ### Test 1: Create a Project
@@ -358,5 +396,4 @@ Create an account on /auth, then log in.
 - [ ] Prometheus integration for real metrics
 - [ ] Cost analysis dashboard
 - [ ] Energy efficiency optimization
-
 

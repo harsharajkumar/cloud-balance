@@ -4,6 +4,7 @@ import cors from 'cors';
 import session from 'express-session';
 
 import authRoutes from './routes/auth.js';
+import mlRoutes from './routes/ml.js';
 import projectRoutes from './routes/projects.js';
 
 
@@ -33,6 +34,7 @@ app.use(session({
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 app.use('/auth', authRoutes);
+app.use('/ml', mlRoutes);
 app.use('/projects', projectRoutes);
 
 

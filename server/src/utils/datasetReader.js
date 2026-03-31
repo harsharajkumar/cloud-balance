@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const REQUIRED_HEADERS = ['timestamp', 'cpu_percent', 'memory_mb', 'requests_per_sec', 'pod_count'];
 
 /**
  * Read and parse traffic.csv dataset
@@ -15,6 +16,11 @@ export function readTrafficDataset() {
     
     const lines = csvData.trim().split('\n');
     const headers = lines[0].split(',');
+    const missingHeaders = REQUIRED_HEADERS.filter(header => !headers.includes(header));
+
+    if (missingHeaders.length > 0) {
+      throw new Error(`traffic.csv missing required columns: ${missingHeaders.join(', ')}`);
+    }
     
     const data = lines.slice(1).map(line => {
       const values = line.split(',');
@@ -46,6 +52,13 @@ export function getCurrentTrafficData() {
   currentIndex++;
   
   return data;
+}
+
+export function getLatestTrafficData() {
+  const dataset = readTrafficDataset();
+  if (dataset.length === 0) return null;
+
+  return dataset[dataset.length - 1];
 }
 
 /**

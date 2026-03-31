@@ -3,15 +3,37 @@ import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import { deployProject } from '../k8s/deployProject.js';
 import * as k8s from '@kubernetes/client-node';
-import { readTrafficDataset, getCurrentTrafficData, calculateReplicas, resetSimulation } from '../utils/datasetReader.js';
+import { readTrafficDataset, getLatestTrafficData } from '../utils/datasetReader.js';
 import { scaleDeployment, getCurrentReplicas } from '../k8s/scaleDeployment.js';
 
 const router = Router();
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8001';
 
 // K8s setup
 const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
 const coreV1Api = kc.makeApiClient(k8s.CoreV1Api);
+
+async function getMlPrediction() {
+  const response = await fetch(`${ML_SERVICE_URL}/prediction`);
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(payload?.error || `ML service returned ${response.status}`);
+  }
+
+  if (
+    !payload ||
+    typeof payload.predicted_requests !== 'number' ||
+    !Number.isFinite(payload.predicted_requests) ||
+    typeof payload.desired_replicas !== 'number' ||
+    !Number.isFinite(payload.desired_replicas)
+  ) {
+    throw new Error('ML service returned an invalid prediction payload');
+  }
+
+  return payload;
+}
 
 function requireAuth(req, res, next) {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
@@ -240,8 +262,7 @@ router.post('/:id/simulate', requireAuth, async (req, res) => {
     
     console.log('🎯 Simulating scaling for:', deploymentName); // Debug
     
-    // Get current traffic data point
-    const trafficData = getCurrentTrafficData();
+    const trafficData = getLatestTrafficData();
     
     if (!trafficData) {
       return res.status(404).json({ error: 'No traffic data available' });
@@ -249,8 +270,8 @@ router.post('/:id/simulate', requireAuth, async (req, res) => {
     
     console.log('📊 Traffic:', trafficData.requests_per_sec, 'req/s'); // Debug
     
-    // Calculate required replicas
-    const requiredReplicas = calculateReplicas(trafficData.requests_per_sec);
+    const mlPrediction = await getMlPrediction();
+    const requiredReplicas = mlPrediction.desired_replicas;
     
     console.log('📈 Required replicas:', requiredReplicas); // Debug
     
@@ -280,8 +301,10 @@ router.post('/:id/simulate', requireAuth, async (req, res) => {
     
     res.json({
       trafficData,
+      mlPrediction,
       scaling: {
         requestsPerSec: trafficData.requests_per_sec,
+        predictedRequests: mlPrediction.predicted_requests,
         previousReplicas: currentReplicas,
         requiredReplicas,
         scaled: requiredReplicas !== currentReplicas,
@@ -295,7 +318,7 @@ router.post('/:id/simulate', requireAuth, async (req, res) => {
   }
 });
 
-/* ── START AUTO-SCALING SIMULATION ── */
+/* ── START ML AUTO-SCALING ── */
 let simulationInterval = null;
 
 router.post('/:id/start-autoscale', requireAuth, async (req, res) => {
@@ -308,20 +331,19 @@ router.post('/:id/start-autoscale', requireAuth, async (req, res) => {
       clearInterval(simulationInterval);
     }
     
-    // Reset dataset to beginning
-    resetSimulation();
-    
     const deploymentName = `project-${id}`;
     
     console.log('🚀 Starting auto-scaling for:', deploymentName);
+    await getMlPrediction();
     
     // Start simulation loop
     simulationInterval = setInterval(async () => {
       try {
-        const trafficData = getCurrentTrafficData();
+        const trafficData = getLatestTrafficData();
         if (!trafficData) return;
         
-        const requiredReplicas = calculateReplicas(trafficData.requests_per_sec);
+        const mlPrediction = await getMlPrediction();
+        const requiredReplicas = mlPrediction.desired_replicas;
         
         // ADD 'default' namespace
         const currentReplicaInfo = await getCurrentReplicas(deploymentName, 'default');
@@ -330,7 +352,7 @@ router.post('/:id/start-autoscale', requireAuth, async (req, res) => {
         if (requiredReplicas !== currentReplicas) {
           // ADD 'default' namespace
           await scaleDeployment(deploymentName, requiredReplicas, 'default');
-          console.log(`📊 Auto-scaled ${deploymentName}: ${currentReplicas} → ${requiredReplicas} (${trafficData.requests_per_sec} req/s)`);
+          console.log(`📊 Auto-scaled ${deploymentName}: ${currentReplicas} → ${requiredReplicas} (${trafficData.requests_per_sec} req/s, predicted ${mlPrediction.predicted_requests.toFixed(2)} req/s)`);
         }
       } catch (error) {
         console.error('❌ Auto-scale error:', error.message);

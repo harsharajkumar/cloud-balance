@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "db:init": "node src/db/init.js"
+    "db:init": "node src/db/init.js",
+    "test:ml": "node --test src/routes/ml.test.js"
   },
   "dependencies": {
     "@kubernetes/client-node": "^1.4.0",
